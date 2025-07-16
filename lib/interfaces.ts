@@ -2,7 +2,7 @@
 
 // Ortak alanlar
 export interface BaseRecipe {
-  id: number;
+  id: string;
   title: string;
   note?: string;
   createdAt?: string;
@@ -13,7 +13,7 @@ export interface BaseRecipe {
 
 // Bireysel kullanıcıya ait tarif
 export interface PersonalRecipe extends BaseRecipe {
-  userId: number;
+  userId: string;
   // İleride favori, kategori, fotoğraf vs. eklenebilir
   ingredients?: string[];
   category?: string;
@@ -21,7 +21,7 @@ export interface PersonalRecipe extends BaseRecipe {
 
 // Firma tarifleri
 export interface CompanyRecipe extends BaseRecipe {
-  companyId: number;
+  companyId: string;
   cost?: number;
   portion?: number;
   // İzinler, malzeme listesi, personel notları vs. eklenebilir
@@ -29,15 +29,15 @@ export interface CompanyRecipe extends BaseRecipe {
 
 // Kullanıcılar
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
 }
 
 // Firma rolleri ve yetkileri
 export interface CompanyRole {
-  id: number;
-  companyId: number;
+  id: string;
+  companyId: string;
   name: string; // Örn: "Şef", "Yardımcı", "Stajyer"
   permissions: Permission[];
 }
@@ -49,9 +49,9 @@ export interface Permission {
 
 // Firma personeli
 export interface CompanyUser {
-  id: number;
-  companyId: number;
+  id: string;
+  companyId: string;
   name: string;
   email: string;
-  roleId: number; // Dinamik rol
+  roleId: string; // Dinamik rol
 } 

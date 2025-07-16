@@ -2,15 +2,33 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabaseClient";
 
 export function LoginForm({ userType }: { userType: "bireysel" | "firma" }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Burada ileride Supabase login işlemi olacak
-    alert(`${userType} login: ${email} / ${password}`);
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    // Supabase ile kullanıcı girişi
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+    setSuccess("Giriş başarılı! Yönlendiriliyorsunuz...");
+    setLoading(false);
+    // Burada yönlendirme veya başka bir işlem yapılabilir
   };
 
   return (
@@ -38,9 +56,12 @@ export function LoginForm({ userType }: { userType: "bireysel" | "firma" }) {
       <Button
         type="submit"
         className="w-full bg-[#f6e58d] text-zinc-900 font-bold rounded-xl px-4 py-3 text-lg shadow hover:bg-[#f9eec0] transition-colors mt-2"
+        disabled={loading}
       >
-        Giriş Yap
+        {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
       </Button>
+      {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+      {success && <div className="text-green-500 text-sm mt-2">{success}</div>}
     </form>
   );
 }

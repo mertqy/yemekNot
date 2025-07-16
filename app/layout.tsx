@@ -30,11 +30,15 @@ export default function RootLayout({
   // Ancak layout dosyası default olarak server component olduğu için, burada saf bir çözüm: sadece ana sayfa ve giriş/kayıt sayfalarında navbari göster.
 
   // Panel sayfalarını path ile kontrol et
-  const isPanel = typeof window !== "undefined" && window.location.pathname.startsWith("/bireysel/panel");
+  const isPanel =
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/bireysel/panel");
 
   return (
     <html lang="tr" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-950 text-zinc-100`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-950 text-zinc-100`}
+      >
         {!isPanel && (
           <nav className="w-full bg-zinc-900/90 backdrop-blur border-b border-zinc-800 shadow-sm rounded-b-2xl px-2 md:px-0">
             <div className="max-w-5xl mx-auto flex items-center justify-between px-2 md:px-6 py-3 gap-2">
@@ -43,16 +47,32 @@ export default function RootLayout({
                   <span className="inline-block w-7 h-7 rounded-lg bg-[#f6e58d] mr-1"></span>
                   YemekNot
                 </span>
-                <span className="hidden md:inline text-xs font-medium text-zinc-400 ml-2">Tarif & Mutfak Yönetimi</span>
+                <Link href="/">
+                  <span className="hidden md:inline text-xs font-medium text-zinc-400 ml-2">
+                    Tarif & Mutfak Yönetimi
+                  </span>
+                </Link>
               </div>
               <div className="hidden md:flex flex-row gap-6 text-sm font-semibold items-center">
-                <Link href="/" className="hover:text-[#f6e58d] transition-colors">Anasayfa</Link>
-                <Link href="/bireysel/giris" className="hover:text-[#f6e58d] transition-colors">Bireysel Giriş</Link>
-                <Link href="/firma/giris" className="hover:text-[#f6e58d] transition-colors">Firma Giriş</Link>
+                
+                <Link
+                  href="/bireysel/giris"
+                  className="hover:text-[#f6e58d] transition-colors"
+                >
+                  Bireysel Giriş
+                </Link>
+                <Link
+                  href="/firma/giris"
+                  className="hover:text-[#f6e58d] transition-colors"
+                >
+                  Firma Giriş
+                </Link>
               </div>
               <div className="hidden md:block">
                 <Link href="/bireysel/giris">
-                  <Button className="bg-[#f6e58d] text-zinc-900 font-bold px-5 py-2 rounded-xl shadow hover:bg-[#f9eec0] transition-colors">Hemen Başla</Button>
+                  <Button className="bg-[#f6e58d] text-zinc-900 font-bold px-5 py-2 rounded-xl shadow hover:bg-[#f9eec0] transition-colors">
+                    Hemen Başla
+                  </Button>
                 </Link>
               </div>
               {/* Mobil menü butonu */}
@@ -62,9 +82,7 @@ export default function RootLayout({
             </div>
           </nav>
         )}
-        <main>
-          {children}
-        </main>
+        <main>{children}</main>
         <Toaster richColors position="top-center" />
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PersonalRecipe } from "../../../lib/interfaces";
 import { RecipeCard } from "@/components/recipe/RecipeCard";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RecipeDetailDialog } from "@/components/recipe/RecipeDetailDialog";
+import { supabase } from "@/lib/supabaseClient";
 
 const exampleCategories = [
   "Ana Yemek",
@@ -19,16 +20,63 @@ const exampleCategories = [
 ];
 
 export default function BireyselPanel() {
-  const dummyUser = "Demo Kullanıcı";
   const [recipes, setRecipes] = useState<PersonalRecipe[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]); // Artık Supabase'den gelecek
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [showFavorites, setShowFavorites] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [detailRecipeId, setDetailRecipeId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [detailRecipeId, setDetailRecipeId] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Kullanıcıyı al
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+    getUser();
+  }, []);
+
+  // Kullanıcıya ait tarifleri çek
+  useEffect(() => {
+    if (!user) return;
+    const fetchRecipes = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("recipes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        toast.error("Tarifler yüklenemedi: " + error.message);
+      } else {
+        setRecipes(data || []);
+      }
+      setLoading(false);
+    };
+    fetchRecipes();
+  }, [user]);
+
+  // Kullanıcının favori tariflerini Supabase'den çek
+  useEffect(() => {
+    if (!user) return;
+    const fetchFavorites = async () => {
+      const { data, error } = await supabase
+        .from("favorites")
+        .select("recipe_id")
+        .eq("user_id", user.id);
+      if (error) {
+        toast.error("Favoriler yüklenemedi: " + error.message);
+      } else {
+        setFavoriteIds((data || []).map((fav: any) => fav.recipe_id));
+      }
+    };
+    fetchFavorites();
+  }, [user]);
 
   // Kategorileri: sistemde tanımlı + tariflerden gelenler (tekrarsız)
   const categories = useMemo(() => {
@@ -37,36 +85,63 @@ export default function BireyselPanel() {
   }, [recipes]);
 
   // Ekle veya düzenle
-  const handleSave = ({ title, note, ingredients, category }: { title: string; note: string; ingredients: string[]; category: string }) => {
+  const handleSave = async ({ title, note, ingredients, category }: { title: string; note: string; ingredients: string[]; category: string }) => {
+    if (!user) return;
     if (editId) {
-      setRecipes(recipes => recipes.map(r => r.id === editId ? { ...r, title, note, ingredients, category } : r));
+      // Güncelle
+      const { error } = await supabase
+        .from("recipes")
+        .update({ title, note, ingredients, category })
+        .eq("id", editId)
+        .eq("user_id", user.id);
+      if (error) {
+        toast.error("Tarif güncellenemedi: " + error.message);
+      } else {
+        setRecipes(recipes => recipes.map(r => r.id === editId ? { ...r, title, note, ingredients, category } : r));
+        toast.success("Tarif güncellendi!");
+      }
       setEditId(null);
-      toast.success("Tarif güncellendi!");
     } else {
-      const newRecipe: PersonalRecipe = {
-        id: Date.now(),
-        userId: 1,
-        title,
-        note,
-        ingredients,
-        category,
-      };
-      setRecipes([...recipes, newRecipe]);
-      toast.success("Tarif eklendi!");
+      // Yeni tarif ekle
+      const { data, error } = await supabase
+        .from("recipes")
+        .insert([{ user_id: user.id, title, note, ingredients, category }])
+        .select();
+      if (error) {
+        toast.error("Tarif eklenemedi: " + error.message);
+      } else if (data && data[0]) {
+        setRecipes(recipes => [data[0], ...recipes]);
+        toast.success("Tarif eklendi!");
+      }
     }
     setShowForm(false);
   };
 
   // Sil
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
     setConfirmDeleteId(id);
   };
 
-  const handleConfirmDelete = () => {
-    if (confirmDeleteId !== null) {
-      setRecipes(recipes => recipes.filter(r => r.id !== confirmDeleteId));
-      setFavoriteIds(favs => favs.filter(fid => fid !== confirmDeleteId));
-      toast.success("Tarif silindi!");
+  const handleConfirmDelete = async () => {
+    if (confirmDeleteId !== null && user) {
+      const { error } = await supabase
+        .from("recipes")
+        .delete()
+        .eq("id", confirmDeleteId)
+        .eq("user_id", user.id);
+      if (error) {
+        toast.error("Tarif silinemedi: " + error.message);
+      } else {
+        setRecipes(recipes => recipes.filter(r => r.id !== confirmDeleteId));
+        setFavoriteIds(favs => favs.filter(fid => fid !== confirmDeleteId));
+        // Favorilerden de sil
+        await supabase
+          .from("favorites")
+          .delete()
+          .eq("recipe_id", confirmDeleteId)
+          .eq("user_id", user.id);
+        toast.success("Tarif silindi!");
+      }
       setConfirmDeleteId(null);
     }
   };
@@ -75,18 +150,39 @@ export default function BireyselPanel() {
     setConfirmDeleteId(null);
   };
 
-  // Favori
-  const handleFavorite = (id: number) => {
-    setFavoriteIds(favs => {
-      const isFav = favs.includes(id);
-      const newFavs = isFav ? favs.filter(fid => fid !== id) : [...favs, id];
-      toast.success(isFav ? "Favorilerden çıkarıldı." : "Favorilere eklendi!");
-      return newFavs;
-    });
+  // Favori ekle/çıkar (Supabase ile)
+  const handleFavorite = async (id: string) => {
+    if (!user) return;
+    const isFav = favoriteIds.includes(id);
+    if (isFav) {
+      // Favoriden çıkar
+      const { error } = await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("recipe_id", id);
+      if (error) {
+        toast.error("Favori çıkarılamadı: " + error.message);
+      } else {
+        setFavoriteIds(favs => favs.filter(fid => fid !== id));
+        toast.success("Favorilerden çıkarıldı.");
+      }
+    } else {
+      // Favoriye ekle
+      const { error } = await supabase
+        .from("favorites")
+        .insert([{ user_id: user.id, recipe_id: id }]);
+      if (error) {
+        toast.error("Favoriye eklenemedi: " + error.message);
+      } else {
+        setFavoriteIds(favs => [...favs, id]);
+        toast.success("Favorilere eklendi!");
+      }
+    }
   };
 
   // Düzenle
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: string) => {
     setEditId(id);
     setShowForm(true);
   };
@@ -161,7 +257,7 @@ export default function BireyselPanel() {
       </aside>
       {/* Sağ Panel: Tarifler ve Form */}
       <section className="flex-1">
-        <h1 className="text-2xl font-bold mb-4">Hoş geldin, {dummyUser}!</h1>
+        <h1 className="text-2xl font-bold mb-4">Hoş geldin, {user?.email || "Kullanıcı"}!</h1>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Tariflerin</h2>
           <Button onClick={() => { setShowForm(true); setEditId(null); }}>
@@ -177,6 +273,7 @@ export default function BireyselPanel() {
             onSubmit={handleSave}
             onCancel={handleCancel}
             submitLabel={editId ? "Güncelle" : "Ekle"}
+            loading={loading}
           />
         )}
         <ul className="space-y-4">
@@ -217,7 +314,7 @@ export default function BireyselPanel() {
           onConfirm={handleConfirmDelete}
           onCancel={handleCancelDelete}
         />
-        {filteredRecipes.length === 0 && (
+        {filteredRecipes.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center mt-12 gap-4 animate-fade-in">
             <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-bounce">
               <ellipse cx="60" cy="100" rx="32" ry="8" fill="#27272a" />
@@ -229,6 +326,9 @@ export default function BireyselPanel() {
             </svg>
             <div className="text-zinc-400 text-lg text-center">Hiç tarif bulunamadı.<br />Yeni bir tarif ekleyin veya filtreleri değiştirin.</div>
           </div>
+        )}
+        {loading && (
+          <div className="text-zinc-400 text-center mt-8">Yükleniyor...</div>
         )}
       </section>
     </div>
