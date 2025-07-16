@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 export function LoginForm({ userType }: { userType: "bireysel" | "firma" }) {
   const [email, setEmail] = React.useState("");
@@ -10,6 +11,7 @@ export function LoginForm({ userType }: { userType: "bireysel" | "firma" }) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,13 @@ export function LoginForm({ userType }: { userType: "bireysel" | "firma" }) {
     }
     setSuccess("Giriş başarılı! Yönlendiriliyorsunuz...");
     setLoading(false);
-    // Burada yönlendirme veya başka bir işlem yapılabilir
+    setTimeout(() => {
+      if (userType === "bireysel") {
+        router.push("/bireysel/panel");
+      } else {
+        router.push("/firma/panel");
+      }
+    }, 1000);
   };
 
   return (
