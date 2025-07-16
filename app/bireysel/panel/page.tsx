@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Button } from "@/components/ui/button";
 import { PersonalRecipe } from "../../../lib/interfaces";
 import { RecipeCard } from "@/components/recipe/RecipeCard";
@@ -29,7 +30,7 @@ export default function BireyselPanel() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [detailRecipeId, setDetailRecipeId] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Kullanıcıyı al
@@ -72,7 +73,7 @@ export default function BireyselPanel() {
       if (error) {
         toast.error("Favoriler yüklenemedi: " + error.message);
       } else {
-        setFavoriteIds((data || []).map((fav: any) => fav.recipe_id));
+        setFavoriteIds((data || []).map((fav: { recipe_id: string }) => fav.recipe_id));
       }
     };
     fetchFavorites();
